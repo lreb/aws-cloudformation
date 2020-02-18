@@ -1,0 +1,206 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "An AWS Serverless Application that uses the ASP.NET Core framework running in Amazon Lambda.",
+
+    "Parameters": {
+      "prefixName": {
+        "Description": "this is a parameter vpc name",
+        "Type": "String",
+        "Default": "lreb" 
+      },
+      "projectName": {
+        "Description": "this is the project name",
+        "Type": "String",
+        "Default": "facware"
+      },
+      "DbSubnetIpBlocks": {
+        "Description": "Comma-delimited list of three CIDR blocks",
+        "Type": "CommaDelimitedList",
+          "Default": "10.0.48.0/24, 10.0.112.0/24, 10.0.176.0/24"
+      },
+      "AvailabilityZoneList": {
+          "Description": "-",
+          "Type": "CommaDelimitedList",
+          "Default": "us-east-1a, us-east-1b"
+      }
+      
+    },
+
+    "Resources": {
+      "stackVPC1": {
+        "Type": "AWS::EC2::VPC",
+        "Properties": {
+          "CidrBlock": "10.0.0.0/16",
+          "Tags":[
+            { "Key": "Name", "Value": {"Fn::Sub" : [ "${PrefixName}-${Project}-vpc", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]} },
+            { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
+          ]
+        }
+      },
+
+      "stcakInternetGateay1": {
+        "Type": "AWS::EC2::InternetGateway",
+        "Properties": {
+          "Tags":[
+            { "Key": "Name", "Value": {"Fn::Sub" : [ "${PrefixName}-${Project}-ig", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]} },
+            { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
+          ]
+        }
+      },
+      "AttachGateway": {
+        "Type": "AWS::EC2::VPCGatewayAttachment",
+        "Properties": {
+          "VpcId": { "Ref" : "stackVPC1" },
+          "InternetGatewayId": { "Ref": "stcakInternetGateay1" }
+        }
+      },
+      
+      "subnetAPublic1": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "AvailabilityZone": { "Fn::Select" : [ "0", {"Ref" : "AvailabilityZoneList"} ] },
+          "VpcId": { "Ref" : "stackVPC1" },
+          "CidrBlock": "10.0.1.0/24",
+          "Tags":[
+            { "Key": "Name", "Value": {"Fn::Sub" : [ "${PrefixName}-${Project}-sb-public", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]} },
+            { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
+          ]
+        }
+      },
+
+      "subnetAPrivate1": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "AvailabilityZone": { "Fn::Select" : [ "1", {"Ref" : "AvailabilityZoneList"} ] },
+          "VpcId": { "Ref" : "stackVPC1" },
+          "CidrBlock": "10.0.3.0/24",
+          "Tags":[
+            { "Key": "Name", "Value": {"Fn::Sub" : [ "${PrefixName}-${Project}-sb-private", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]} },
+            { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
+          ]
+        }
+      },
+      
+      "securityGroupAPublic1" : {
+        "Type" : "AWS::EC2::SecurityGroup",
+        "Properties" : {
+          "GroupDescription" : "public security group",
+          "GroupName": {"Fn::Sub" : [ "${PrefixName}-${Project}-sg-public", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]},
+          "SecurityGroupIngress" : [ 
+            {
+              "CidrIp" : "0.0.0.0/0",
+              "Description" : "ssh connection",
+              "FromPort" : 22,
+              "IpProtocol" : "tcp",
+              "ToPort" : 22
+            },
+            {
+              "CidrIp" : "0.0.0.0/0",
+              "Description" : "http connection",
+              "IpProtocol" : "tcp",
+              "FromPort" : 80,
+              "ToPort" : 80
+            }
+          ],
+          "VpcId" : { "Ref": "stackVPC1" },
+          "Tags":[
+            { "Key": "Name", "Value": {"Fn::Sub" : [ "${PrefixName}-${Project}-sg-public", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]} },
+            { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
+          ]
+        }
+      },
+      
+      
+      "s3Bucket": {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+          "AccessControl": "PublicRead",
+          "BucketName": {"Fn::Sub" : [ "${PrefixName}-${Project}-s3b", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]},
+          "WebsiteConfiguration": {
+            "IndexDocument": "index.html",
+            "ErrorDocument": "error.html"
+          },
+          "Tags":[
+            { "Key": "Name", "Value": {"Fn::Sub" : [ "${PrefixName}-${Project}-s3b", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]} },
+            { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
+          ] 
+        }
+      },
+
+      "serverlessAspNetCoreFunction": {
+        "Type": "AWS::Serverless::Function",
+        "Properties": {
+          "Handler": "AWSPTUServerless::AWSPTUServerless.LambdaEntryPoint::FunctionHandlerAsync",
+          "Runtime": "dotnetcore2.1",
+          "CodeUri": "",
+          "MemorySize": 256,
+          "Timeout": 30,
+          "Role": null,
+          "Policies": [
+            "AWSLambdaFullAccess"
+          ],
+          "FunctionName": "awuea1-chi-lmb-jabilptu",
+          "Events": {
+            "ProxyResource": {
+              "Type": "Api",
+              "Properties": {
+                "Path": "/{proxy+}",
+                "Method": "ANY"
+              }
+            },
+            "RootResource": {
+              "Type": "Api",
+              "Properties": {
+                "Path": "/",
+                "Method": "ANY"
+              }
+            }
+          }
+        }
+      },
+
+      "apiGateway": {
+        "Type" : "AWS::ApiGateway::RestApi",
+        "Properties": {
+          "Description": "A test API",
+          "Name": {"Fn::Sub" : [ "${PrefixName}-${Project}-agy", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]},
+          "EndpointConfiguration": {
+            "Types" : [ "EDGE" ]
+          }
+        }
+      },
+      "proxyResource": {
+        "Type": "AWS::ApiGateway::Resource",
+        "Properties": { 
+          "ParentId": { "Fn::GetAtt" : [ "apiGateway", "RootResourceId" ] },
+          "RestApiId": { "Ref": "apiGateway" },
+          "PathPart": "{proxy+}"
+        }
+      },
+      "apiGatewayRootMethod": {
+        "Type": "AWS::ApiGateway::Method",
+        "Properties": {
+          "AuthorizationType": "NONE",
+          "HttpMethod": "ANY",
+          "Integration": {
+            "Type": "AWS_PROXY",
+            "IntegrationHttpMethod": "POST",
+            "Uri": {"Fn::Join" : ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2020-02-16/functions/", {"Fn::GetAtt": ["serverlessAspNetCoreFunction", "Arn"]}, "/invocations"]]}
+          }
+        }
+      }
+
+    },
+
+    "Outputs" : {
+      "stcakInternstackVPC1etGateay1" : {
+        "Description" : "The ID of the VPC",
+        "Value" : { "Ref" : "stackVPC1" },
+        "Export" : {
+          "Name" : {"Fn::Sub": "${AWS::StackName}-VPCID" }
+        }
+      }
+    }
+    
+}
