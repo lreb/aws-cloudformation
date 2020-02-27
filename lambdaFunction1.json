@@ -1,0 +1,26 @@
+"lambdaFunction1": {
+    "Type": "AWS::Lambda::Function",
+    "Properties": {
+      "Handler": "AWSPTUServerless::AWSPTUServerless.LambdaEntryPoint::FunctionHandlerAsync",
+      "Role": "arn:aws:iam::609826415497:role/Abdul-Lambda-IAM",
+      "Runtime": "dotnetcore2.1",
+      "FunctionName": {
+          "Fn::Sub" : [ "${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}", { 
+              "Project":  { "Ref": "projectName" },
+              "ServPrefix":  { "Fn::Select" : [ "6", {"Ref" : "prefixListName"} ] }, 
+              "AccountId": { "Ref" : "AWS::AccountId" },
+              "ProjectNumber": { "Ref": "projectNumber" }
+              } 
+          ]
+      },
+      "MemorySize": 128,
+      "Timeout": 5,
+      "Environment": {
+        "Variables": {
+          "v1":"10",
+          "v2":"11"
+        }
+      },
+      "Description": "Lambda function from cloud formation"
+    }
+  },

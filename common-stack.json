@@ -1,0 +1,158 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "An AWS Serverless Application that uses the ASP.NET Core framework running in Amazon Lambda.",
+
+    "Parameters": {
+      "prefixListName": {
+          "Description": "prefix for a service",
+          "Type": "CommaDelimitedList",
+          "Default": "s3, rds, vpc, igw, ngw, dxgw, lambd, cfn"
+      },
+      "prefixName": {
+        "Description": "this is a parameter vpc name",
+        "Type": "String",
+        "Default": "lreb" 
+      },
+      "projectName": {
+        "Description": "this is the project name",
+        "Type": "String",
+        "Default": "facware"
+      },
+      "projectNumber": {
+        "Description": "this is the project number",
+        "Type": "String",
+        "Default": "0001987"
+      },
+      "DbSubnetIpBlocks": {
+        "Description": "Comma-delimited list of three CIDR blocks",
+        "Type": "CommaDelimitedList",
+          "Default": "10.0.48.0/24, 10.0.112.0/24, 10.0.176.0/24"
+      },
+      "AvailabilityZoneList": {
+          "Description": "-",
+          "Type": "CommaDelimitedList",
+          "Default": "us-east-1a, us-east-1b"
+      }
+      
+    },
+
+    "Resources": {
+        "s3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "PublicRead",
+                "BucketName": {
+                    "Fn::Sub" : [ "${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}", { 
+                        "Project":  { "Ref": "projectName" },
+                        "ServPrefix":  { "Fn::Select" : [ "0", {"Ref" : "prefixListName"} ] }, 
+                        "AccountId": { "Ref" : "AWS::AccountId" },
+                        "ProjectNumber": { "Ref": "projectNumber" }
+                        } 
+                    ]
+                },
+                "WebsiteConfiguration": {
+                "IndexDocument": "index.html",
+                "ErrorDocument": "error.html"
+                },
+                "Tags":[
+                { "Key": "Name", "Value": {
+                    "Fn::Sub" : [ "${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}", { 
+                        "Project":  { "Ref": "projectName" },
+                        "ServPrefix":  { "Fn::Select" : [ "0", {"Ref" : "prefixListName"} ] }, 
+                        "AccountId": { "Ref" : "AWS::AccountId" },
+                        "ProjectNumber": { "Ref": "projectNumber" }
+                        } 
+                    ]
+                } },
+                { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
+                ] 
+            }
+        },
+
+        "apiGateway1": {
+            "Type" : "AWS::ApiGateway::RestApi",
+            "Properties": {
+                "Description": "A test API",
+                "Name": {
+                    "Fn::Sub" : [ "${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}", { 
+                        "Project":  { "Ref": "projectName" },
+                        "ServPrefix":  { "Fn::Select" : [ "0", {"Ref" : "prefixListName"} ] }, 
+                        "AccountId": { "Ref" : "AWS::AccountId" },
+                        "ProjectNumber": { "Ref": "projectNumber" }
+                        } 
+                    ]
+                }, 
+                "EndpointConfiguration": {
+                "Types" : [ "EDGE" ]
+                }
+            }
+        },
+        
+        "AspNetCoreFunction": {
+        "Properties": {
+            "CodeUri": "s3://awuea1-chi-s3b-jabilptu/AWSPTUServerless/AspNetCoreFunction-CodeUri-637172922309980836-637172922403185448.zip",
+            "Events": {
+                "ProxyResource": {
+                    "Properties": {
+                        "Method": "ANY",
+                        "Path": "/{proxy+}"
+                    },
+                    "Type": "Api",
+                    "RestApiId": { "Ref": "apiGateway1" }
+                },
+                "RootResource": {
+                    "Properties": {
+                        "Method": "ANY",
+                        "Path": "/"
+                    },
+                    "Type": "Api",
+                    "RestApiId": { "Ref": "apiGateway1" }
+                }
+            },
+            "FunctionName": {
+                "Fn::Sub" : [ "${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}", { 
+                    "Project":  { "Ref": "projectName" },
+                    "ServPrefix":  { "Fn::Select" : [ "6", {"Ref" : "prefixListName"} ] }, 
+                    "AccountId": { "Ref" : "AWS::AccountId" },
+                    "ProjectNumber": { "Ref": "projectNumber" }
+                    } 
+                ]
+            },
+            "Handler": "AWSPTUServerless::AWSPTUServerless.LambdaEntryPoint::FunctionHandlerAsync",
+            "MemorySize": 256,
+            "Policies": [
+                "AWSLambdaFullAccess"
+            ],
+            "Role": null,
+            "Runtime": "dotnetcore2.1",
+            "Timeout": 30
+            },
+            "Type": "AWS::Serverless::Function",
+            "Tags":[
+                { "Key": "Name", "Value": {
+                    "Fn::Sub" : [ "${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}", { 
+                        "Project":  { "Ref": "projectName" },
+                        "ServPrefix":  { "Fn::Select" : [ "6", {"Ref" : "prefixListName"} ] }, 
+                        "AccountId": { "Ref" : "AWS::AccountId" },
+                        "ProjectNumber": { "Ref": "projectNumber" }
+                        } 
+                    ]
+                } },
+                { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
+            ]
+        }
+    },
+
+    "Outputs" : {
+        "s3Bucket1" : {
+          "Description" : "The ID of the s3",
+          "Value" : { "Ref" : "s3Bucket" },
+          "Export" : {
+            "Name" : {  "Fn::Sub": ["${StackName}", {
+                "StackName": { "Ref": "AWS::StackName" }
+            } ] }
+          }
+        }
+      }
+}

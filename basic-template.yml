@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Basic cloud formation stack
+
+Parameters:
+  prefixListName:
+    Description: prefix for a service
+    Type: CommaDelimitedList
+    Default: s3, rds, vpc, igw, ngw, dxgw, lambd, cfn
+  projectName:
+    Description: this is the project name
+    Type: String
+    Default: lreb
+  projectNumber:
+    Description: this is the project number
+    Type: String
+    Default: 1987
+  DbSubnetIpBlocks:
+    Description: Comma-delimited list of three CIDR blocks
+    Type: CommaDelimitedList
+    Default: 10.0.48.0/24, 10.0.112.0/24, 10.0.176.0/24
+  AvailabilityZoneList:
+    Description: "-"
+    Type: CommaDelimitedList
+    Default: us-east-1a, us-east-1b
+
+Resources:
+  s3Bucket1:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName:
+        Fn::Sub:
+        - ${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}
+        - Project:
+            Ref: projectName
+          ServPrefix:
+            Fn::Select:
+            - '0'
+            - Ref: prefixListName
+          AccountId:
+            Ref: AWS::AccountId
+          ProjectNumber:
+            Ref: projectNumber
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub:
+          - ${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}
+          - Project:
+              Ref: projectName
+            ServPrefix:
+              Fn::Select:
+              - '0'
+              - Ref: prefixListName
+            AccountId:
+              Ref: AWS::AccountId
+            ProjectNumber:
+              Ref: projectNumber
+      - Key: Project
+        Value:
+          Fn::Sub:
+          - ${Project}
+          - Project:
+              Ref: projectName
+
+  apiGateway1:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: A test API
+      Name:
+        Fn::Sub:
+        - ${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}
+        - Project:
+            Ref: projectName
+          ServPrefix:
+            Fn::Select:
+            - '0'
+            - Ref: prefixListName
+          AccountId:
+            Ref: AWS::AccountId
+          ProjectNumber:
+            Ref: projectNumber
+      EndpointConfiguration:
+        Types:
+        - EDGE
+  
+  ProxyMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: ANY
+      ResourceId: 
+        Ref: Resource
+      RestApiId: 
+        Ref: apiGateway1
+      AuthorizationType: NONE
+      RequestParameters:
+        method.request.path.proxy: true
+      Integration:
+        CacheKeyParameters:
+          - 'method.request.path.proxy'
+        RequestParameters:
+          integration.request.path.proxy: 'method.request.path.proxy'
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        IntegrationResponses:
+          - StatusCode: 200 
+
+Outputs:
+  s3Bucket1:
+    Description: The ID of the s3
+    Value:
+      Ref: s3Bucket1
+    Export:
+      Name:
+        Fn::Sub:
+        - ${StackName}
+        - StackName:
+            Ref: AWS::StackName

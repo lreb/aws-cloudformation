@@ -1,7 +1,7 @@
 {
-    "AWSTemplateFormatVersion": "2010-09-09",
-    "Transform": "AWS::Serverless-2016-10-31",
-    "Description": "An AWS Serverless Application that uses the ASP.NET Core framework running in Amazon Lambda.",
+    "AWSTemplateFormatVersion": "2020-02-25",
+    "Transform": "AWS::Serverless-2020-02-25",
+    "Description": "Network cloud formation",
 
     "Parameters": {
       "prefixName": {
@@ -108,86 +108,6 @@
             { "Key": "Name", "Value": {"Fn::Sub" : [ "${PrefixName}-${Project}-sg-public", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]} },
             { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
           ]
-        }
-      },
-      
-      
-      "s3Bucket": {
-        "Type": "AWS::S3::Bucket",
-        "Properties": {
-          "AccessControl": "PublicRead",
-          "BucketName": {"Fn::Sub" : [ "${PrefixName}-${Project}-s3b", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]},
-          "WebsiteConfiguration": {
-            "IndexDocument": "index.html",
-            "ErrorDocument": "error.html"
-          },
-          "Tags":[
-            { "Key": "Name", "Value": {"Fn::Sub" : [ "${PrefixName}-${Project}-s3b", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]} },
-            { "Key": "Project", "Value": {"Fn::Sub" : [ "${Project}", { "Project":  { "Ref": "projectName" } } ]} }
-          ] 
-        }
-      },
-
-      "serverlessAspNetCoreFunction": {
-        "Type": "AWS::Serverless::Function",
-        "Properties": {
-          "Handler": "AWSPTUServerless::AWSPTUServerless.LambdaEntryPoint::FunctionHandlerAsync",
-          "Runtime": "dotnetcore2.1",
-          "CodeUri": "",
-          "MemorySize": 256,
-          "Timeout": 30,
-          "Role": null,
-          "Policies": [
-            "AWSLambdaFullAccess"
-          ],
-          "FunctionName": "awuea1-chi-lmb-jabilptu",
-          "Events": {
-            "ProxyResource": {
-              "Type": "Api",
-              "Properties": {
-                "Path": "/{proxy+}",
-                "Method": "ANY"
-              }
-            },
-            "RootResource": {
-              "Type": "Api",
-              "Properties": {
-                "Path": "/",
-                "Method": "ANY"
-              }
-            }
-          }
-        }
-      },
-
-      "apiGateway": {
-        "Type" : "AWS::ApiGateway::RestApi",
-        "Properties": {
-          "Description": "A test API",
-          "Name": {"Fn::Sub" : [ "${PrefixName}-${Project}-agy", { "PrefixName":  { "Ref": "prefixName" }, "Project":  { "Ref": "projectName" } } ]},
-          "EndpointConfiguration": {
-            "Types" : [ "EDGE" ]
-          }
-        }
-      },
-      "proxyResource": {
-        "Type": "AWS::ApiGateway::Resource",
-        "Properties": { 
-          "ParentId": { "Fn::GetAtt" : [ "apiGateway", "RootResourceId" ] },
-          "RestApiId": { "Ref": "apiGateway" },
-          "PathPart": "{proxy+}"
-        }
-      },
-      "apiGatewayRootMethod": {
-        "Type": "AWS::ApiGateway::Method",
-        "Properties": {
-          "AuthorizationType": "NONE",
-          "HttpMethod": "ANY",
-          "Integration": {
-            "Type": "AWS_PROXY",
-            "IntegrationHttpMethod": "POST",
-            "Uri": {"Fn::Join" : ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2020-02-16/functions/", {"Fn::GetAtt": ["serverlessAspNetCoreFunction", "Arn"]}, "/invocations"]]}
-          }
         }
       }
 
