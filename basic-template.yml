@@ -25,23 +25,12 @@ Parameters:
     Default: us-east-1a, us-east-1b
 
 Resources:
-  s3Bucket1:
+  lreb.facware.com:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain,
     Properties:
       AccessControl: PublicRead
-      BucketName:
-        Fn::Sub:
-        - ${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}
-        - Project:
-            Ref: projectName
-          ServPrefix:
-            Fn::Select:
-            - '0'
-            - Ref: prefixListName
-          AccountId:
-            Ref: AWS::AccountId
-          ProjectNumber:
-            Ref: projectNumber
+      BucketName: lreb.facware.com
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: error.html
@@ -66,49 +55,6 @@ Resources:
           - ${Project}
           - Project:
               Ref: projectName
-
-  apiGateway1:
-    Type: AWS::ApiGateway::RestApi
-    Properties:
-      Description: A test API
-      Name:
-        Fn::Sub:
-        - ${Project}-${ServPrefix}-${AccountId}-${ProjectNumber}
-        - Project:
-            Ref: projectName
-          ServPrefix:
-            Fn::Select:
-            - '0'
-            - Ref: prefixListName
-          AccountId:
-            Ref: AWS::AccountId
-          ProjectNumber:
-            Ref: projectNumber
-      EndpointConfiguration:
-        Types:
-        - EDGE
-  
-  ProxyMethod:
-    Type: 'AWS::ApiGateway::Method'
-    Properties:
-      HttpMethod: ANY
-      ResourceId: 
-        Ref: Resource
-      RestApiId: 
-        Ref: apiGateway1
-      AuthorizationType: NONE
-      RequestParameters:
-        method.request.path.proxy: true
-      Integration:
-        CacheKeyParameters:
-          - 'method.request.path.proxy'
-        RequestParameters:
-          integration.request.path.proxy: 'method.request.path.proxy'
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        PassthroughBehavior: WHEN_NO_MATCH
-        IntegrationResponses:
-          - StatusCode: 200 
 
 Outputs:
   s3Bucket1:
